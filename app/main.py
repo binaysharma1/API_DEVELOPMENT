@@ -1,7 +1,7 @@
 from fastapi import FastAPI,Response,status,HTTPException
 from fastapi.params import Body
-from pydantic import BaseModel
-from typing import Optional
+# from pydantic import BaseModel
+from typing import Optional,List
 from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -10,7 +10,7 @@ import sqlalchemy
 from  sqlalchemy.orm import Session
 from fastapi import Depends
 
-from . import models
+from . import models,schemas
 from .database import engine,get_db
 
 models.Base.metadata.create_all(bind=engine) #this will create the tables in the database if they don't exist already
@@ -19,12 +19,7 @@ app=FastAPI()
 
 
 
-class Post(BaseModel):
-   
-    title: str
-    content: str
-    # published: bool = True
-    # rating: Optional[int] = None
+
     
 while True:  
     try:
@@ -45,26 +40,13 @@ async def root():
     return {"message": "Hello World"}
 
 
-
-@app.get("/posts")
-
-def test_posts(db: Session = Depends(get_db)):
-        posts = db.query(models.Post).all()
-
-    # cursor.execute("""SELECT * FROM posts""")
-    # posts = cursor.fetchall()
-        return {"Posts" : posts}
-
-
-
-
-@app.post("/posts/create", status_code=status.HTTP_201_CREATED)
-def create_post(new_post: Post, db: Session = Depends(get_db)):
+@app.post("/posts/create", status_code=status.HTTP_201_CREATED, response_model=schemas.Post)
+def create_post(new_post: schemas.PostCreate, db: Session = Depends(get_db)):
     post = models.Post(title=new_post.title, content=new_post.content)
     db.add(post)
     db.commit()
     db.refresh(post)
-    return {"Post": post} 
+    return  post
 
 
 
@@ -79,7 +61,24 @@ def create_post(new_post: Post, db: Session = Depends(get_db)):
     # # raise HTTPException(status_code=status.HTTP_201_CREATED, detail=f"Post created successfully with id {post_dict['id']}")
 
 
-@app.get("/posts/{id}")
+
+
+
+@app.get("/posts",response_model=list[schemas.Post])
+
+def test_posts(db: Session = Depends(get_db)):
+        posts = db.query(models.Post).all()
+
+    # cursor.execute("""SELECT * FROM posts""")
+    # posts = cursor.fetchall()
+        return posts
+
+
+
+
+
+
+@app.get("/posts/{id}",response_model=schemas.Post)
 def get_post_by_id(id: int,response:Response, db: Session = Depends(get_db)):
     post = db.query(models.Post).filter(models.Post.id == id).first()
 
@@ -87,12 +86,13 @@ def get_post_by_id(id: int,response:Response, db: Session = Depends(get_db)):
     # post = cursor.fetchone()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
-    return {"Post": post}
+    return  post
     # # for post in my_posts:
     #     if post["id"] == id:
     # #         return {"Post": post}
     #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
        
+
 
 
 
@@ -109,16 +109,17 @@ def delete_post(id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": f"Post with id {id} deleted successfully"}
 
-@app.put("/posts/{id}")
-def update_post(id: int, updated_post: Post, db: Session = Depends(get_db)):
+@app.put("/posts/{id}",response_model=schemas.Post)
+def update_post(id: int, updated_post: schemas.PostUpdate, db: Session = Depends(get_db)):
     post = db.query(models.Post).filter(models.Post.id == id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
     post.title = updated_post.title
     post.content = updated_post.content
+    post.published = updated_post.published
     db.commit()
     db.refresh(post)
-    return {"message": f"Post with id {id} updated successfully", "post": post}
+    return post
 
     # for index, post in enumerate(my_posts):
     #     if post["id"] == id:
@@ -140,3 +141,29 @@ def update_post(id: int, updated_post: Post, db: Session = Depends(get_db)):
 
 
 
+#code for user operations
+
+@app.post("/signup", status_code=status.HTTP_201_CREATED, response_model=schemas.LoginResponse)
+def create_user(new_user: schemas.UserCreate, db: Session = Depends(get_db)):
+    try:
+        existing_user = db.query(models.User).filter(models.User.email == new_user.email).first()
+        if existing_user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"User with email {new_user.email} already exists")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while checking for existing user")
+    user = models.User(email=new_user.email, password=new_user.password)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"message": "User created successfully"}
+
+
+#in login, first email uniqueness is tested then asked for password then user login successful
+@app.post("/login", status_code=status.HTTP_200_OK, response_model=schemas.LoginResponse)
+def login_user(user_credentials: schemas.UserAuth, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with email {user_credentials.email} not found")
+    if user.password != user_credentials.password:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect password")
+    return {"message":"User Login successful"}
