@@ -1,0 +1,22 @@
+[project]
+name = "faastapi"
+version = "0.1.0"
+description = "Learning API development"
+readme = "README.md"
+authors = [
+    { name = "zephyr" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.141.1",
+    "psycopg2>=2.9.13",
+    "pydantic>=2.13.5",
+    "sqlalchemy>=2.0.54",
+]
+
+[project.scripts]
+faastapi = "faastapi:main"
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
