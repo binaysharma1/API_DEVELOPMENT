@@ -14,13 +14,14 @@ from fastapi import Depends
 
 from . import models,schemas,utils
 from .database import engine,get_db
+from .routers import post, user
 
 
 models.Base.metadata.create_all(bind=engine) #this will create the tables in the database if they don't exist already
 
 app=FastAPI()
-
-
+app.include_router(user.router)
+app.include_router(post.router)
 
 
     
@@ -43,13 +44,6 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.post("/posts/create", status_code=status.HTTP_201_CREATED, response_model=schemas.Post)
-def create_post(new_post: schemas.PostCreate, db: Session = Depends(get_db)):
-    post = models.Post(title=new_post.title, content=new_post.content)
-    db.add(post)
-    db.commit()
-    db.refresh(post)
-    return  post
 
 
 
@@ -64,115 +58,3 @@ def create_post(new_post: schemas.PostCreate, db: Session = Depends(get_db)):
     # # raise HTTPException(status_code=status.HTTP_201_CREATED, detail=f"Post created successfully with id {post_dict['id']}")
 
 
-
-
-
-@app.get("/posts",response_model=list[schemas.Post])
-
-def test_posts(db: Session = Depends(get_db)):
-        posts = db.query(models.Post).all()
-
-    # cursor.execute("""SELECT * FROM posts""")
-    # posts = cursor.fetchall()
-        return posts
-
-
-
-
-
-
-@app.get("/posts/{id}",response_model=schemas.Post)
-def get_post_by_id(id: int,response:Response, db: Session = Depends(get_db)):
-    post = db.query(models.Post).filter(models.Post.id == id).first()
-
-    # cursor.execute("""SELECT * FROM posts WHERE id = %s""",(str(id),))
-    # post = cursor.fetchone()
-    if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
-    return  post
-    # # for post in my_posts:
-    #     if post["id"] == id:
-    # #         return {"Post": post}
-    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
-       
-
-
-
-
-
-
-
-
-@app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int, db: Session = Depends(get_db)):
-    post = db.query(models.Post).filter(models.Post.id == id).first()
-    if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
-    db.delete(post)
-    db.commit()
-    return {"message": f"Post with id {id} deleted successfully"}
-
-@app.put("/posts/{id}",response_model=schemas.Post)
-def update_post(id: int, updated_post: schemas.PostUpdate, db: Session = Depends(get_db)):
-    post = db.query(models.Post).filter(models.Post.id == id).first()
-    if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
-    post.title = updated_post.title
-    post.content = updated_post.content
-    post.published = updated_post.published
-    db.commit()
-    db.refresh(post)
-    return post
-
-    # for index, post in enumerate(my_posts):
-    #     if post["id"] == id:
-    #         my_posts[index] = updated_post.dict()
-    #         my_posts[index]["id"] = id  # Ensure the ID remains the same
-    #         return {"message": f"Post with id {id} updated successfully", "post": my_posts[index]}
-    # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
-
-
-    return {"message": f"Post with id {id} updated successfully", "post": updated_post_data}
-    
-    # for index, post in enumerate(my_posts):
-    #     if post["id"] == id:
-    #         my_posts[index] = updated_post.dict()
-    #         my_posts[index]["id"] = id  # Ensure the ID remains the same
-    #         return {"message": f"Post with id {id} updated successfully", "post": my_posts[index]}
-    # raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
-
-
-
-
-#code for user operations
-
-@app.post("/signup", status_code=status.HTTP_201_CREATED, response_model=schemas.LoginResponse)
-def create_user(new_user: schemas.UserCreate, db: Session = Depends(get_db)):
-    existing_user = db.query(models.User).filter(models.User.email == new_user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"User with email {new_user.email} already exists")
-
-    hashed_password = utils.hash_password(new_user.password)
-    user = models.User(email=new_user.email, password=hashed_password)
-    db.add(user)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A user with this email already exists")
-    except Exception:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create user")
-    db.refresh(user)
-    return {"message": "User created successfully"}
-
-
-#in login, first email uniqueness is tested then asked for password then user login successful
-@app.post("/login", status_code=status.HTTP_200_OK, response_model=schemas.LoginResponse)
-def login_user(user_credentials: schemas.UserAuth, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with email {user_credentials.email} not found")
-    if not utils.verify_password(user_credentials.password, user.password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect password")
-    return {"message":"User Login successful"}
