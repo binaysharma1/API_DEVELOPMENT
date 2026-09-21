@@ -14,7 +14,7 @@ from fastapi import Depends
 
 from . import models,schemas,utils
 from .database import engine,get_db
-from .routers import post, user
+from .routers import post, user,Auth
 
 
 models.Base.metadata.create_all(bind=engine) #this will create the tables in the database if they don't exist already
@@ -22,6 +22,7 @@ models.Base.metadata.create_all(bind=engine) #this will create the tables in the
 app=FastAPI()
 app.include_router(user.router)
 app.include_router(post.router)
+app.include_router(Auth.router)
 
 
     

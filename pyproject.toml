@@ -14,6 +14,7 @@ dependencies = [
     "psycopg2>=2.9.13",
     "pydantic>=2.13.5",
     "sqlalchemy>=2.0.54",
+    "python-jose[cryptography]>=3.5.0",
 ]
 
 [project.scripts]

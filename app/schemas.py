@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 
 class PostBase(BaseModel):
@@ -54,6 +55,8 @@ class UserAuth(BaseModel):
         orm_mode = True
 
 class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
     message: str
 
 
@@ -64,3 +67,10 @@ class UserOut(BaseModel):
     created_at: datetime
     class Config:
         orm_mode = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    id: Optional[int] = None
