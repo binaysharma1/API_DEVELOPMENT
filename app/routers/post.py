@@ -52,7 +52,7 @@ def test_posts(db: Session = Depends(get_db), current_user: schemas.UserOut = De
     # cursor.execute("""SELECT * FROM posts""")
     # posts = cursor.fetchall()
         return posts
-
+ 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int, db: Session = Depends(get_db), current_user: schemas.UserOut = Depends(oauth2.get_current_user)):
