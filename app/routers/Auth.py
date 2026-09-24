@@ -13,7 +13,7 @@ router = APIRouter(
 
 
 #in login, first email uniqueness is tested then asked for password then user login successful
-@router.post("/login", status_code=status.HTTP_200_OK, response_model=schemas.LoginResponse)
+@router.post("/login", status_code=status.HTTP_200_OK, response_model=schemas.Token)
 def login_user(user_credentials: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == user_credentials.username).first()
     if not user:
@@ -29,7 +29,7 @@ def login_user(user_credentials: OAuth2PasswordRequestForm = Depends(), db: Sess
 
 #code for user operations
 
-@router.post("/signup", status_code=status.HTTP_201_CREATED, response_model=schemas.LoginResponse)
+@router.post("/signup", status_code=status.HTTP_201_CREATED, response_model=schemas.SignupResponse)
 def create_user(new_user: schemas.UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(models.User).filter(models.User.email == new_user.email).first()
     if existing_user:
