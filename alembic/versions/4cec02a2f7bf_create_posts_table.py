@@ -29,7 +29,6 @@ def upgrade() -> None:
 
 
 
-
 def downgrade() -> None:
     """Downgrade schema."""
     #undo the changes made in the upgrade function
