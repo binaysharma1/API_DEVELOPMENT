@@ -46,12 +46,13 @@ def get_post_by_id(id: int, db: Session = Depends(get_db), current_user: schemas
 
 @router.get("/",response_model=list[schemas.Post], status_code=status.HTTP_200_OK)
 
-def test_posts(db: Session = Depends(get_db), current_user: schemas.UserOut = Depends(oauth2.get_current_user)):
-        posts = db.query(models.Post).filter(models.Post.owner_id == current_user.id).all()
+def test_posts(db: Session = Depends(get_db), current_user: schemas.UserOut = Depends(oauth2.get_current_user)
+,limit:int=10, skip=0, search: str = ""):
+    posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
 
     # cursor.execute("""SELECT * FROM posts""")
     # posts = cursor.fetchall()
-        return posts
+    return posts
  
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
